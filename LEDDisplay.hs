@@ -24,8 +24,9 @@ import Control.Concurrent   (threadDelay)
 import System.IO            (FilePath)
 import System.Hardware.Serialport
 import qualified Data.ByteString.Char8 as B
-import Numeric  -- Convert string to Hex
-import Data.Time
+import Numeric              (readHex, showHex, showIntAtBase)
+import Data.Char            (intToDigit)
+import Data.List            (intercalate)
 
 import CharsLookup
 
@@ -37,8 +38,10 @@ frameHeight :: Int
 frameHeight = 8
 frameDelay :: Int
 frameDelay = 10
-scrollDelayMS :: Int
-scrollDelayMS = 10000
+scrollDelayMSHW :: Int
+scrollDelayMSHW = 10000
+scrollDelayMSSim :: Int
+scrollDelayMSSim = 50000
 scrollColumnsCount :: Int
 scrollColumnsCount = 1
 
@@ -50,6 +53,7 @@ frameStartChar :: Char
 frameStartChar = '^'
 frameEndChar :: Char
 frameEndChar = '$'
+
 
 
 -- The bit value that would indicate the LED is on or off.
@@ -64,6 +68,25 @@ main :: IO Int
 main = do
     withSerial serialPort defaultSerialSettings { commSpeed = serialSpeed } runForever
 
+-- Print to screen instead LED Display
+mainSimulator :: IO Int
+mainSimulator = do
+    forever $ do
+        liftIO $ putStr "Text to display: "
+        msg <- liftIO getLine
+        -- TODO: Add exception handling for quiting (Ctrl C or msg == ":q")
+        -- See tryJust https://hackage.haskell.org/package/base-4.8.1.0/docs/Control-Exception.html#v:tryJust
+        renderMatrixToTerminal scrollColumnsCount $ padMatrix ((stringToMatrix msg))
+
+renderMatrixToTerminal :: Int -> [[Bool]] -> IO ()
+renderMatrixToTerminal c m = do
+    mapM_ (scrollFrameTerminal m) [0..(((length (m !! 0)) - frameWidth - 1) `div` c)]
+    threadDelay 1
+    where
+        scrollFrameTerminal m n= do
+            renderFrameOntoTerminal (matrixToFrameGrid ((matrixToFrames c m) !! n))
+            threadDelay scrollDelayMSSim
+    
 -- Prompt for string and render it
 runForever :: SerialPort -> IO Int
 runForever hw = do
@@ -88,7 +111,7 @@ renderMatrix scrollSpacing hw matrix = do
     where
         scrollFrame s m n= do
             renderFrameOntoHW s (matrixToFrameGrid ((matrixToFrames scrollSpacing m) !! n))
-            threadDelay scrollDelayMS
+            threadDelay scrollDelayMSHW
 
 -- Each matrix has many frames to animate scrolling
 matrixToFrames :: Int -> [[Bool]] -> [[[Bool]]]
@@ -101,6 +124,30 @@ renderFrameOntoHW hw dataToRender = do
     send hw $ B.pack [frameStartChar]
     mapM_ (send hw) [B.pack [c] | c <- dataToRender]
     send hw $ B.pack [frameEndChar]
+
+renderFrameOntoTerminal :: String -> IO ()
+renderFrameOntoTerminal dataToRender = do
+    -- liftIO $ print dataToRender
+    putStrLn (hexFrameToTerminal dataToRender)
+
+hexFrameToTerminal :: String -> String
+hexFrameToTerminal hs = "\n\n\n" ++ (intercalate "\n" [insertSpace (padZeros frameWidth (hexToBin (take frameHeight ( drop (n * frameHeight) hs)))) | n <- [0..(frameHeight - 1)]])
+
+insertSpace :: String -> String
+insertSpace ""   = ""
+insertSpace (x:xs) = x:' ':(insertSpace xs)
+
+hexToBin :: String -> String
+hexToBin s = replaceChar '.' '@' (showIntAtBase 2 intToDigit (fst((readHex s) !! 0)) "") where
+    replaceChar :: Char -> Char -> String -> String
+    replaceChar m n "" = ""
+    replaceChar m n ('1':xs) = m:(replaceChar m n xs)
+    replaceChar m n ('0':xs) = n:(replaceChar m n xs)
+    
+
+padZeros :: Int -> String -> String
+padZeros len s | length (s) < len = padZeros len ('0':s)
+               | otherwise = s
 
 -- Convert a string to the matrix representation.
 -- Note add a blank column in between each char.
@@ -132,6 +179,12 @@ fromIntToHexString bs = showHex (fromBoolToInt(take 4 bs)) (fromIntToHexString (
         fromBoolToIntLSB []     = 0
         fromBoolToIntLSB (True:ds) = 1 + (2 * fromBoolToIntLSB ds)
         fromBoolToIntLSB (False:ds) = 2 * fromBoolToIntLSB ds
+        
+
+-- Convert a Hex String to Binary representation "F0" -> "11110000"
+displayHexOnTerminal :: String -> String
+displayHexOnTerminal _ = "nothing"
+
 
 -- Shift the matrix in different directions:  up, down, left, or right ('u', 'd', 'l' or 'r').
 shiftMatrix :: Char -> [[Int]] -> [[Int]]
