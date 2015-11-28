@@ -1,56 +1,106 @@
--- Copyright (c) 2015 Hong Quach and Norah Alballa
+{-|
+Module      : CharsLookup
+Description : Transform from char and string to matrix representation
+Copyright   : (c) Hong Quach, 2015
+License     : MIT
+            | This source file is licensed under the 
+            | "MIT License." Please see the LICENSE
+            | in this distribution for license terms.
+Maintainer  : hong dot t dot quach at g m a i l dot com
+Stability   : experimental
+Portability : POSIX
+
+The functions included in this module is mainly for converting 
+char and string into matrix representation that correspond to the 
+pixel in the matrix.
+-}
 module CharsLookup where
 
--- Trim the extra columns of zeros
+import Data.Char    (toLower)
+import Data.Maybe   (fromJust, isJust)
+
+{-|
+  The bit value that would indicate the LED is on or off.
+  The actual value is depended on the polarity of the LED
+  and how it was wired.
+-}
+lightOn :: Bool
+lightOn = False
+lightOff :: Bool
+lightOff = True
+
+-- | Convert a string to the matrix representation.
+stringToMatrix :: String -> [[Bool]]
+stringToMatrix [] = [[]]
+stringToMatrix s@(c:cs) | isJust (specialStrings s) = fromJust (specialStrings s)
+                        | otherwise = concatMatrix (letterToMatrix c) (stringToMatrix cs)
+
+-- | Concat two nested lists into one nested list
+concatMatrix :: [[Bool]] -> [[Bool]] -> [[Bool]]
+concatMatrix  [[]]   [[]]  = [[]]
+concatMatrix  [[]]    ts   = ts
+concatMatrix   cs    [[]]  = cs
+concatMatrix (c:[]) (t:[]) = [ (c ++ lightOff:t) ]
+concatMatrix (c:[]) (t:ts) = [ (c ++ lightOff:t) ] ++ ts
+concatMatrix (c:cs) (t:[]) =  cs ++ [ (c ++ lightOff:t) ]
+concatMatrix (c:cs) (t:ts) = (c ++ lightOff:t) :  concatMatrix cs ts
+
+-- | Trim the extra columns of zeros
 trimZeros :: [String] -> [String]
 trimZeros ss = trimRightZeros (trimLeftZeros ss ss) ss where
+    -- | Remove the left column of all zeros
     trimLeftZeros :: [String] -> [String] -> [String]
     trimLeftZeros lss trimedSS
-            | (countNonZero lss) == (countNonZero trimedSS) = trimLeftZeros (trimLeftCol trimedSS) lss
+            | (countNonZero lss) == (countNonZero trimedSS) = trimLeftZeros (dropCol 'L' trimedSS) lss
             | otherwise = trimedSS
+    -- | Remove the right column of all zeros
     trimRightZeros :: [String] -> [String] -> [String]
     trimRightZeros rss trimedSS
-            | (countNonZero rss) == (countNonZero trimedSS) = trimRightZeros (trimRightCol trimedSS) rss
+            | (countNonZero rss) == (countNonZero trimedSS) = trimRightZeros (dropCol 'R' trimedSS) rss
             | otherwise = trimedSS
-    trimLeftCol xs = [drop 1 x | x <- xs]
-    trimRightCol xs = [take ((length x) - 1) x | x <- xs]
+    -- | Drop the left column
+    dropCol :: Char -> [String] -> [String]
+    dropCol side xs | side == 'L' = [drop 1 x | x <- xs]
+                    | side == 'R' = [take ((length x) - 1) x | x <- xs]
     countNonZero zss = sum [ if z /= '0' then 1 else 0| zs <- zss, z <- zs]
 
--- Convert a nested list of Int of 0s and 1s into Bool where 0 to True and 1 to False.
+-- | Convert a nested list of Int of 0s and 1s into Bool where 0 to True and 1 to False.
 toBoolGrid :: [String] -> [[Bool]]
 toBoolGrid charGrid = [[c == '0' |c <- cs] | cs <- charGrid]
 
--- Convert a nested list of Bool to Int of 0s and 1s where True to 0 and False to 1.
+-- | Convert a nested list of Bool to Int of 0s and 1s where True to 0 and False to 1.
 toIntGrid :: [[Bool]] -> [String]
 toIntGrid boolGrid = [[if b then '0' else '1' | b <- bs] | bs <- boolGrid]
 
--- Convert an ASCII letter to the matrix representation
+-- | Convert a char to the matrix representation in Bool format
 letterToMatrix :: Char -> [[Bool]]
-letterToMatrix c = toBoolGrid ( letterToStrings c)
+letterToMatrix c = toBoolGrid ( charToStrings c)
 
-letterToStrings :: Char -> [String]
-letterToStrings c | c == ' ' = asciiToStrings c
-                  | otherwise = trimZeros (asciiToStrings c)
+-- | Convert a char to the matrix representation in the string format.
+charToStrings :: Char -> [String]
+charToStrings c | c == ' ' = rawCharToStrings c
+                | otherwise = trimZeros (rawCharToStrings c)
 
-specialStrings :: String -> [String]
+specialStrings :: String -> Maybe [[Bool]]
 specialStrings s
-    | s == "Haskell Logo" =
-        ["00000000000",
-         "00000000000",
-         "10010000000",
-         "01001001111",
-         "00100100000",
-         "01001010011",
-         "10010001000",
-         "00000000000"]
-    | otherwise = [[] | r <- [0..7]]
+    | map toLower s == "welcome" =
+        Just (stringToMatrix "» LED")
+    | map toLower s == "what is this?" || map toLower s == "what?"=
+        Just (stringToMatrix "This is Haskell LED, and the animation on this 8x32 Matrix LED is driven by program written in Haskell…")
+    | map toLower s == "who are we?" || map toLower s == "who?"=
+        Just (stringToMatrix "We are Hong Quach and Norah Alballa!…")
+    | map toLower s == "what time it is?" || map toLower s == "time?" =
+        Just (stringToMatrix "8:30a")
+    | map toLower s == "haskell logo" =
+        Just (stringToMatrix "»")
+    | otherwise = Nothing
 
--- The ASCII char lookup table
-asciiToStrings :: Char -> [String]
-asciiToStrings c
-    -- Just a space
+-- | The char lookup table
+rawCharToStrings :: Char -> [String]
+rawCharToStrings c
+    -- | Just a space
     | c == ' '  = ["0" | x <- [0..7]]
-
+    -- | Key available on US standard keyboards
     | c == '!'  = ["00000",
                    "00100",
                    "00100",
@@ -896,7 +946,7 @@ asciiToStrings c
                    "00000",
                    "00000",
                    "00000"]
-
+    -- | The function f ASCII #159
     | c == 'ƒ'  = ["00010",
                    "00100",
                    "00100",
@@ -905,7 +955,7 @@ asciiToStrings c
                    "00100",
                    "01000",
                    "00000"]
-
+    -- | Horizontal Ellipsis #Alt+0133  U+2026 
     | c == '…'  = ["00000",
                    "00000",
                    "00000",
@@ -915,6 +965,16 @@ asciiToStrings c
                    "10101",
                    "00000"]
 
+    -- | A subsitute for the Haskell Logo >\=, ASCII #175 
+    | c == '»'  = ["00000000000",
+                   "00000000000",
+                   "10010000000",
+                   "01001001111",
+                   "00100100000",
+                   "01001010011",
+                   "10010001000",
+                   "00000000000"]
+    
     | otherwise = ["00000",
                    "00000",
                    "00000",

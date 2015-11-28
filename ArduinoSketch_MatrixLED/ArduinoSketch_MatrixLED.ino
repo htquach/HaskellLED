@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2015 Hong Quach and Norah Alballa
+ * Copyright (c) 2015 Hong Quach
  *
  * This source file is licensed under the "MIT License." Please see the LICENSE
  * in this distribution for license terms.
@@ -8,6 +8,7 @@
  * Send each frame through the serial port (64 bytes buffer size)
  * marked with the startChar and end with the endChar.
  *
+ * Author:  hong dot t dot quach at g m a i l dot com
  */
 
 String inputString = "";         // a string to hold incoming data
@@ -16,8 +17,8 @@ char startChar = '^';            // char to indicate the start of matrix data
 char endChar = '$';              // char to indicate the end of the matrix data
 boolean dataStarted = false;     // signal that matrix data is comming in
 
-// Initial frame
-String matrixData = "ff00ff0000ff00ffff00ff0000ff00ffff00ff0000ff00ffff00ff0000ff00ff";
+// Initial frame "{The Haskell Logo} LED"
+String matrixData = "fffef823fffefbedb7fefbeedb0ef86eedfefbeedacefbedb77e0823ffffffff";
 String newMatrixData = "";
 
 boolean enableDebug = false;
