@@ -1,20 +1,20 @@
 {-|
 Module      : LEDDisplay
 Description : Control a LED display with Arduino
-Copyright   : (c) Hong Quach, 2015
+Copyright   : (c) Hong Quach and Norah Alballa, 2015
 License     : MIT
-            | This source file is licensed under the 
+            | This source file is licensed under the
             | "MIT License." Please see the LICENSE
             | in this distribution for license terms.
 Maintainer  : hong dot t dot quach at g m a i l dot com
 Stability   : experimental
 Portability : POSIX
 
-The user would submit a string through the GHCi terminal on the 
-computer and it will be scroll across on the LED matrix. 
-This project can be extended to drive LED Cube and other large I/O 
-projects (e.g. more LED 8xN) with little to no modification. 
-The string to be displayed on the matrix can also come from 
+The user would submit a string through the GHCi terminal on the
+computer and it will be scroll across on the LED matrix.
+This project can be extended to drive LED Cube and other large I/O
+projects (e.g. more LED 8xN) with little to no modification.
+The string to be displayed on the matrix can also come from
 another source, such as an email notification or system status.
 -}
 module LEDDisplay where
@@ -54,7 +54,7 @@ renderMatrixToTerminal led  m = do
     where
         scrollFrameTerminal m n= do
             renderFrameOntoTerminal led (matrixToHexFrame (width led) ((scrollLeftFrames led m) !! n))
-            threadDelay (scrDelayMSSim led)
+            threadDelay (scrDelayMicroSec led)
 
 -- | Prompt for string and render it
 runForever :: LEDDisplaySettings -> SerialPort -> IO (Maybe Int)
@@ -69,7 +69,7 @@ runForever led hw = do
         liftIO $ putStr "Text to display: "
         msg <- liftIO getLine
         when (msg == "exit") $ do
-            lift $ renderMatrix (led { scrDelayMSHW = 50000}) hw (stringToMatrix "Bye! »")
+            lift $ renderMatrix (led { scrDelayMicroSec = 50000}) hw (stringToMatrix "Bye! »")
             exit
         lift $ renderMatrix led hw $ padMatrix led (stringToMatrix msg)
 
@@ -81,7 +81,7 @@ renderMatrix led hw matrix = do
     where
         scrollFrame s m n= do
             renderFrameOntoHW led s (matrixToHexFrame (width led) ((scrollLeftFrames led m) !! n))
-            threadDelay (scrDelayMSHW led)
+            threadDelay (scrDelayMicroSec led)
 
 -- | Each matrix has many frames to animate scrolling from right to left
 scrollLeftFrames :: LEDDisplaySettings -> [[Bool]] -> [[[Bool]]]
@@ -98,42 +98,44 @@ renderFrameOntoHW led hw dataToRender = do
 -- | Render the hex encoded data onto the terminal as a matrix
 renderFrameOntoTerminal :: LEDDisplaySettings -> String -> IO ()
 renderFrameOntoTerminal led dataToRender = do
-    putStrLn (hexFrameToTerminal (width led) (height led) dataToRender)
+    putStrLn (hexFrameToTerminal (onChar led) (offChar led) (width led) (height led) dataToRender)
 
 -- | Convert a frame in hex format to matrix string
-hexFrameToTerminal :: Int -> Int -> String -> String
-hexFrameToTerminal w h gs =  
+hexFrameToTerminal :: Char -> Char -> Int -> Int -> String -> String
+hexFrameToTerminal onC offC w h gs =
     take 8 (repeat '\n')
     ++ '\n':gs  -- show the hex representation
-    ++ '\n':(boarderHorizontal w)
-    ++ '\n':(intercalate "\n" 
-        [insertSpace (padZeros w (hexToBin  
+    ++ '\n':(borderHorizontal w)
+    ++ '\n':(intercalate "\n"
+        [insertSpace (padLeft onC w (hexToBin onC offC
                 (take h (drop (n * h) gs))))
             | n <- [0..(h - 1)]])
-    ++ '\n':(boarderHorizontal w)
--- TODO:  Look into fixing the '0' instead of '@' at the begining of each line
--- See TODO in the hextToBin case ('0':xs).  This almost like we need to pad before hexToBin.
-boarderHorizontal :: Int -> String
-boarderHorizontal w = (take (w * 2) (repeat '='))
+    ++ '\n':(borderHorizontal w)
 
+-- | A horizontal border to wrap arround the frame
+borderHorizontal :: Int -> String
+borderHorizontal w = (take (w * 2) (repeat '='))
+
+-- | A blank space between each char including the last one.
 insertSpace :: String -> String
 insertSpace ""   = ""
 insertSpace (x:xs) = x:' ':(insertSpace xs)
 
-hexToBin :: String -> String
-hexToBin s = replaceChar ' ' '@' (showIntAtBase 2 intToDigit (fst((readHex s) !! 0)) "") where
+-- | Convert a hex encoded string into a string of binary with OnChar and offChar
+hexToBin :: Char -> Char -> String -> String
+hexToBin onC offC s = replaceChar onC offC (showIntAtBase 2 intToDigit (fst((readHex s) !! 0)) "") where
     replaceChar :: Char -> Char -> String -> String
     replaceChar m n "" = ""
-    replaceChar m n ('1':xs) = m:(replaceChar m n xs)
-    replaceChar m n ('0':xs) = n:(replaceChar m n xs)  -- TODO: If 0 is missing, then it won't replace with '@'
+    replaceChar m n ('1':xs) = n:(replaceChar m n xs)
+    replaceChar m n ('0':xs) = m:(replaceChar m n xs)
 
+{-| Pad the left side of the string with the specified Char until it satistfies
+  the specified length
+-}
+padLeft :: Char -> Int -> String -> String
+padLeft onC len s | length (s) < len = padLeft onC len (onC:s)
+                  | otherwise = s
 
-padZeros :: Int -> String -> String
-padZeros len s | length (s) < len = padZeros len ('0':s)
-               | otherwise = s
-
--- TODO:  Need to deal with the last frame by filling in the Off bits on the right
--- | Truncate a matrix to fit in the frame width and encode it in hex format
 matrixToHexFrame :: Int -> [[Bool]] -> String
 matrixToHexFrame w matrix = concat [fromIntToHexString (take w row) | row <- matrix]
 
@@ -171,23 +173,24 @@ emptyFrame led = [[lightOff | c <- [1..(width led)]] | r <- [1..(height led)]]
 padMatrix :: LEDDisplaySettings -> [[Bool]] -> [[Bool]]
 padMatrix led m = concatMatrix (concatMatrix (emptyFrame led) m) (emptyFrame led)
 
--- | The datatype that would represent an LED Display settings
-data LEDDisplaySettings 
-    -- | A two dimensions LED display structure
-    = LEDMatrix { 
+{-| The datatype that would represent an LED Display settings
+  the constructor that would represent an LED Display for the hardware
+-}
+data LEDDisplaySettings
+    -- | A constructor for a two dimensions LED display (matrix)
+    = LEDMatrix {
         n :: String
         , width :: Int
         , height :: Int
         , serSpeed :: CommSpeed
         , serPortPath :: FilePath
-        , scrDelayMSHW :: Int   -- TODO:  Change to scrDelayMicroSec after removed scrDelayMSSim
-        , scrDelayMSSim :: Int  -- TODO:  Remove after added LEDMatrixSim construct
+        , scrDelayMicroSec :: Int
         , scrColumnsCount :: Int
         , fStartChar :: Char
         , fEndChar :: Char
         }
-{-  TODO Enable a new construct for simulator
-        | LEDMatrixSim {
+    -- | A constructor for simulating a two dimensions display
+    | LEDMatrixSim {
         n :: String
         , width :: Int
         , height :: Int
@@ -195,88 +198,120 @@ data LEDDisplaySettings
         , scrColumnsCount :: Int
         , onChar :: Char
         , offChar :: Char}
--}
+
     deriving (Eq, Show)
 
 -- | The default settings for a Matrix LED
-defaultLedMatrix 
+defaultLedMatrix
     = LEDMatrix {
         n = "32*8 LEDDisplaySettings with medium scroll speed"
         , width = 32, height = 8
         , serSpeed = CS9600
         , serPortPath = arduinoPath
-        , scrDelayMSHW =  1000
-        , scrDelayMSSim = 50000
+        , scrDelayMicroSec =  1000
         , scrColumnsCount = 1
         , fStartChar = '^'
         , fEndChar = '$'}
 
-fastLedMatrix 
+defaultSimulator
+    = LEDMatrixSim {
+        n = "32*8 Simulator with medium scroll speed"
+        , width = 32, height = 8
+        , scrDelayMicroSec = 50000
+        , scrColumnsCount = 1
+        , onChar = '#'
+        , offChar = ' '}
+
+fastLedMatrix
     = LEDMatrix {
         n = "32*8 LEDDisplaySettings with fast scroll speed"
         , width = 32, height = 8
         , serSpeed = CS9600
         , serPortPath = arduinoPath
-        , scrDelayMSHW = 10000
-        , scrDelayMSSim = 10000
+        , scrDelayMicroSec = 10000
         , scrColumnsCount = 5
         , fStartChar = '^'
         , fEndChar = '$'}
 
-slowLedMatrix 
+fastSimulator
+    = LEDMatrixSim {
+        n = "32*8 Simulator with fast scroll speed"
+        , width = 32, height = 8
+        , scrDelayMicroSec = 10000
+        , scrColumnsCount = 5
+        , onChar = '@'
+        , offChar = ' '}
+
+slowLedMatrix
     = LEDMatrix {
         n = "32*8 LEDDisplaySettings with slow scroll speed"
         , width = 32, height = 8
         , serSpeed = CS9600
         , serPortPath = arduinoPath
-        , scrDelayMSHW = 10000
-        , scrDelayMSSim = 1000000
-        , scrColumnsCount = 5
+        , scrDelayMicroSec = 100000
+        , scrColumnsCount = 1
         , fStartChar = '^'
         , fEndChar = '$'}
 
-wideLedMatrix 
+slowSimulator
+    = LEDMatrixSim {
+        n = "32*8 Simulator with slow scroll speed"
+        , width = 32, height = 8
+        , scrDelayMicroSec = 100000
+        , scrColumnsCount = 1
+        , onChar = '@'
+        , offChar = ' '}
+
+wideLedMatrix
     = LEDMatrix {
         n = "40*8 LEDDisplaySettings"
         , width = 40, height = 8
         , serSpeed = CS9600
         , serPortPath = arduinoPath
-        , scrDelayMSHW = 10000
-        , scrDelayMSSim = 1000000
+        , scrDelayMicroSec = 10000
         , scrColumnsCount = 5
         , fStartChar = '^'
         , fEndChar = '$'}
 
+wideSimulator
+    = LEDMatrixSim {
+        n = "32*8 Simulator with medium scroll speed"
+        , width = 40, height = 8
+        , scrDelayMicroSec = 50000
+        , scrColumnsCount = 1
+        , onChar = '@'
+        , offChar = ' '}
+
+
 -- | An line of code to break out of the 'forever' loop
 exit = mzero
 
--- TODO:  These two classes look the same, so combine them 
--- and distinct the instance by data type.
--- | Simulator of the LED Display by render the output to terminal
-class SimLEDDisplay a where
-    sPromptAndDisplay :: a ->  IO (Maybe Int)
-    
--- | The Hardware 
+
+-- | An LED Display class that has various methods for displaying
 class LEDDisplay a where
-    promptAndDisplay :: a -> IO (Maybe Int)
+    -- | Prompt user to input a string to be shown on the display
+    promptAndDisplay :: a ->  IO (Maybe Int)
+
 
 -- | An instance of the LED Display simulator to render to terminal
-instance SimLEDDisplay LEDDisplaySettings where
-    sPromptAndDisplay x =   runMaybeT $ forever $ do
-        lift $ putStr "Text to display: "
-        str <- lift getLine
-        when (str == "exit") $ do
-            lift $ renderMatrixToTerminal (x { scrDelayMSHW = 50000}) (stringToMatrix "Bye! »")
-            exit
-        lift $  renderMatrixToTerminal x  $ padMatrix x ((stringToMatrix str))
-
--- | An instance of the LED Display to render on the hardware
 instance LEDDisplay LEDDisplaySettings where
-    promptAndDisplay x = do
-        withSerial (serPortPath x) defaultSerialSettings { commSpeed = (serSpeed x) } (runForever x)
+    promptAndDisplay  sim@(LEDMatrixSim {})
+        = runMaybeT $ forever $ do
+            lift $ putStr "Text to display: "
+            str <- lift getLine
+            when (str == "exit") $ do
+                lift $ renderMatrixToTerminal (sim { scrDelayMicroSec = 50000}) (stringToMatrix "Bye! »")
+                exit
+            lift $  renderMatrixToTerminal sim  $ padMatrix sim ((stringToMatrix str))
+
+    promptAndDisplay hwmatrix@(LEDMatrix {})
+        = do
+            withSerial (serPortPath hwmatrix) defaultSerialSettings { commSpeed = (serSpeed hwmatrix) } (runForever hwmatrix)
+
 
 -- | The main program to run with the Arduino hardware
 mainArduino = promptAndDisplay defaultLedMatrix
 
+
 -- | The main program to run the display on the terminal
-main = sPromptAndDisplay defaultLedMatrix
+main = promptAndDisplay defaultSimulator

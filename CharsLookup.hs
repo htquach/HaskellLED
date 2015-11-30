@@ -1,17 +1,17 @@
 {-|
 Module      : CharsLookup
 Description : Transform from char and string to matrix representation
-Copyright   : (c) Hong Quach, 2015
+Copyright   : (c) Hong Quach and Norah Alballa, 2015
 License     : MIT
-            | This source file is licensed under the 
+            | This source file is licensed under the
             | "MIT License." Please see the LICENSE
             | in this distribution for license terms.
 Maintainer  : hong dot t dot quach at g m a i l dot com
 Stability   : experimental
 Portability : POSIX
 
-The functions included in this module is mainly for converting 
-char and string into matrix representation that correspond to the 
+The functions included in this module is mainly for converting
+char and string into matrix representation that correspond to the
 pixel in the matrix.
 -}
 module CharsLookup where
@@ -955,7 +955,7 @@ rawCharToStrings c
                    "00100",
                    "01000",
                    "00000"]
-    -- | Horizontal Ellipsis #Alt+0133  U+2026 
+    -- | Horizontal Ellipsis #Alt+0133  U+2026
     | c == '…'  = ["00000",
                    "00000",
                    "00000",
@@ -965,7 +965,7 @@ rawCharToStrings c
                    "10101",
                    "00000"]
 
-    -- | A subsitute for the Haskell Logo >\=, ASCII #175 
+    -- | A subsitute for the Haskell Logo >\=, ASCII #175
     | c == '»'  = ["00000000000",
                    "00000000000",
                    "10010000000",
@@ -974,7 +974,7 @@ rawCharToStrings c
                    "01001010011",
                    "10010001000",
                    "00000000000"]
-    
+
     | otherwise = ["00000",
                    "00000",
                    "00000",
