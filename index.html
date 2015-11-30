@@ -39,7 +39,7 @@
 
 <p>The initial attempt was using the existing Firmata protocol for this project.  However, the refresh rate of the display demanded much higher rate than what can be achieved when trying to render the frame using the Firmata protocol.  To resolve this, we created a simple protocol for sending the frame to the board and have the board render the frame directly there.</p>
 
-<p>The Arduino board is set to listen on its serial port for new frame data to be render.  The frame data format is a Hex encded string of the 1s and 0s bits that map to the ON or OFF state of each of the LED.  The length and order of the bits depend on the number and order of wiring of the bit-shift registers.</p>
+<p>The Arduino board is set to listen on its serial port for new frame data to be render.  The frame data format is a Hex encoded string of the 1s and 0s bits that map to the ON or OFF state of each of the LED.  The length and order of the bits depend on the number and order of wiring of the bit-shift registers.</p>
 
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/htquach/HaskellLED">Haskell LED</a> is maintained by <a href="https://github.com/htquach">htquach</a>.</span>
