@@ -1,3 +1,4 @@
+
 {-|
 Module      : LEDDisplay
 Description : Control a LED display with Arduino
@@ -32,8 +33,9 @@ import qualified Data.ByteString.Char8 as B
 import Numeric              (readHex, showHex, showIntAtBase)
 import Data.Char            (intToDigit)
 import Data.List            (intercalate)
-import Test.HUnit
-
+import Data.Time            (getZonedTime)
+import System.Locale        (defaultTimeLocale)
+import Data.Time.Format     (formatTime)
 
 import CharsLookup
 
@@ -52,18 +54,18 @@ arduinoPath = "COM13"
 
 -- | Render the matrix to terminal instead of onto the actual HW
 renderMatrixToTerminal :: LEDDisplaySettings  -> [[Bool]] -> IO ()
-renderMatrixToTerminal led  m = do
-    mapM_ (scrollFrameTerminal m) [0..(((length (m !! 0)) - (width led) - 1) `div` (scrColumnsCount led))]
+renderMatrixToTerminal led m = do
+    mapM_ (scrollFrameTerminal m) [0..(((length (m !! 0)) - (width led)) `div` (scrColumnsCount led))]
     threadDelay 1
     where
-        scrollFrameTerminal m n= do
+        scrollFrameTerminal m n = do
             renderFrameOntoTerminal led (matrixToHexFrame (width led) ((scrollLeftFrames led m) !! n))
             threadDelay (scrDelayMicroSec led)
 
 
 -- | Prompt for string and render it
-runForever :: LEDDisplaySettings -> SerialPort -> IO (Maybe Int)
-runForever led hw = do
+promptForever :: LEDDisplaySettings -> SerialPort -> IO (Maybe Int)
+promptForever led hw = do
     liftIO $ putStrLn "Initialize"
     threadDelay 1000000
     liftIO $ putStrLn "StartUp Logo"
@@ -113,7 +115,7 @@ renderFrameOntoTerminal led dataToRender = do
 -- | Convert a frame in hex format to matrix string
 hexFrameToTerminal :: Char -> Char -> Int -> Int -> String -> String
 hexFrameToTerminal onC offC w h gs =
-    take 8 (repeat '\n')
+    take 8 (repeat '\n') -- Some blank lines to separate each frame in the output
     ++ '\n':gs  -- show the hex representation
     ++ '\n':(borderHorizontal w)
     ++ '\n':(intercalate "\n"
@@ -171,8 +173,24 @@ emptyFrame :: LEDDisplaySettings -> [[Bool]]
 emptyFrame led = [[lightOff | c <- [1..(width led)]] | r <- [1..(height led)]]
 
 
+-- | Pad the matrix with empty frame at the beginning and at the end of the matrix
 padMatrix :: LEDDisplaySettings -> [[Bool]] -> [[Bool]]
-padMatrix led m = concatMatrix (concatMatrix (emptyFrame led) m) (emptyFrame led)
+padMatrix led m = concatMatrixWithSeparator (concatMatrixWithSeparator (emptyFrame led) m) (emptyFrame led)
+
+
+-- | Pad the left side of the frame with blank columns to fill the frame
+padFrameLeft :: Int -> [[Bool]] -> [[Bool]]
+padFrameLeft w bss = [[lightOff | x <- [(length bs)..(w-1)]] ++ bs | bs <- bss]
+
+
+-- | Pad the right side of the frame with blank columns to fill the frame
+padFrameRight :: Int -> [[Bool]] -> [[Bool]]
+padFrameRight w bss = [bs ++ [lightOff | x <- [(length bs)..(w-1)]] | bs <- bss]
+
+
+-- | Pad both sides of the frame with blank columns to fill the frame
+padFrameCenter :: Int -> [[Bool]] -> [[Bool]]
+padFrameCenter w bss = padFrameLeft w (padFrameRight ((length (bss!!0))+((w - (length (bss!!0))) `div` 2)) bss)
 
 
 {-| The datatype that would represent an LED Display settings
@@ -293,40 +311,41 @@ exit = mzero
 class LEDDisplay a where
     -- | Prompt user to input a string to be shown on the display
     promptAndDisplay :: a ->  IO (Maybe Int)
+    -- | Display a ticking clock
+    clock :: a -> IO (Maybe Int)
 
 
 -- | An instance of the LED Display simulator to render to terminal
 instance LEDDisplay LEDDisplaySettings where
-    promptAndDisplay  sim@(LEDMatrixSim {})
+    promptAndDisplay sim@(LEDMatrixSim {})
         = runMaybeT $ forever $ do
-            lift $ putStr "Text to display: "
-            str <- lift getLine
+            liftIO $ putStr "Text to display: "
+            str <- liftIO getLine  -- TODO:  implement backspace
+            when (str == "exit") $ do
+                liftIO $ renderMatrixToTerminal (sim { scrDelayMicroSec = 50000}) (stringToMatrix "Bye! »")
+                exit
+            lift $  renderMatrixToTerminal sim  $ padMatrix sim (stringToMatrix str)
+    promptAndDisplay hwmatrix@(LEDMatrix {})
+        = do withSerial (serPortPath hwmatrix)
+                        defaultSerialSettings { commSpeed = (serSpeed hwmatrix) }
+                        (promptForever hwmatrix)
+    clock sim@(LEDMatrixSim {})
+        = runMaybeT $ forever $ do
+            liftIO $ putStr "Showing System Clock.  Use Ctrl+C to cancel: "
+            str <- lift $ fmap show getZonedTime  -- TODO:  display just the %H:%M
             when (str == "exit") $ do
                 lift $ renderMatrixToTerminal (sim { scrDelayMicroSec = 50000}) (stringToMatrix "Bye! »")
                 exit
-            lift $  renderMatrixToTerminal sim  $ padMatrix sim ((stringToMatrix str))
-
-    promptAndDisplay hwmatrix@(LEDMatrix {})
-        = do
-            withSerial (serPortPath hwmatrix) defaultSerialSettings { commSpeed = (serSpeed hwmatrix) } (runForever hwmatrix)
-
+            liftIO $  renderMatrixToTerminal sim (padFrameCenter (width sim) (stringToMatrix str))
+    clock hwmatrix@(LEDMatrix {})
+        = undefined
 
 -- | The main program to run with the Arduino hardware
 mainArduino = promptAndDisplay defaultLedMatrix
 
 
 -- | The main program to run the display on the terminal
-main = promptAndDisplay defaultSimulator
+mainTerminal = promptAndDisplay defaultSimulator
 
-
--- TODO: Move all tests code to another file Test_LEDDisplay.hs
--- | Test code
-testPadLeft1 = TestCase (assertEqual "Test padLeft1" (padLeft 'a' 5 "") "aaaaa")
-testPadLeft2 = TestCase (assertEqual "Test padLeft2" (padLeft 'a' 5 "bbbbbb") "bbbbbb")
-testPadLeft3 = TestCase (assertEqual "Test padLeft3" (padLeft 'a' 5 "bbb") "aabbb")
-
-
-runAllTests = do
-    runTestTT testPadLeft1
-    runTestTT testPadLeft2
-    runTestTT testPadLeft3
+-- | Display the current time on the terminal
+clockTerm = clock defaultSimulator

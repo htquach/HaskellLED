@@ -33,17 +33,17 @@ lightOff = True
 stringToMatrix :: String -> [[Bool]]
 stringToMatrix [] = [[]]
 stringToMatrix s@(c:cs) | isJust (specialStrings s) = fromJust (specialStrings s)
-                        | otherwise = concatMatrix (letterToMatrix c) (stringToMatrix cs)
+                        | otherwise = concatMatrixWithSeparator (letterToMatrix c) (stringToMatrix cs)
 
 -- | Concat two nested lists into one nested list
-concatMatrix :: [[Bool]] -> [[Bool]] -> [[Bool]]
-concatMatrix  [[]]   [[]]  = [[]]
-concatMatrix  [[]]    ts   = ts
-concatMatrix   cs    [[]]  = cs
-concatMatrix (c:[]) (t:[]) = [ (c ++ lightOff:t) ]
-concatMatrix (c:[]) (t:ts) = [ (c ++ lightOff:t) ] ++ ts
-concatMatrix (c:cs) (t:[]) =  cs ++ [ (c ++ lightOff:t) ]
-concatMatrix (c:cs) (t:ts) = (c ++ lightOff:t) :  concatMatrix cs ts
+concatMatrixWithSeparator :: [[Bool]] -> [[Bool]] -> [[Bool]]
+concatMatrixWithSeparator  [[]]   [[]]  = [[]]
+concatMatrixWithSeparator  [[]]    ts   = ts
+concatMatrixWithSeparator   cs    [[]]  = cs
+concatMatrixWithSeparator (c:[]) (t:[]) = [ (c ++ lightOff:t) ]
+concatMatrixWithSeparator (c:[]) (t:ts) = [ (c ++ lightOff:t) ] ++ ts
+concatMatrixWithSeparator (c:cs) (t:[]) =  cs ++ [ (c ++ lightOff:t) ]
+concatMatrixWithSeparator (c:cs) (t:ts) = (c ++ lightOff:t) :  concatMatrixWithSeparator cs ts
 
 -- | Trim the extra columns of zeros
 trimZeros :: [String] -> [String]
