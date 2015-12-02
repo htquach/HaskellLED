@@ -121,7 +121,7 @@ hexFrameToTerminal onC offC w h gs =
     ++ '\n':(borderHorizontal w)
     ++ '\n':(intercalate "\n"
         [insertSpace (padLeft onC w (hexToBin onC offC
-                (take h (drop (n * h) gs))))
+                (take (w `div` 4) (drop (n * (w `div` 4)) gs))))
             | n <- [0..(h - 1)]])
     ++ '\n':(borderHorizontal w)
 
