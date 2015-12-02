@@ -81,16 +81,15 @@ charToStrings :: Char -> [String]
 charToStrings c | c == ' ' = rawCharToStrings c
                 | otherwise = trimZeros (rawCharToStrings c)
 
+-- | A set of special strings that would map to different text
 specialStrings :: String -> Maybe [[Bool]]
 specialStrings s
     | map toLower s == "welcome" =
         Just (stringToMatrix "» LED")
     | map toLower s == "what is this?" || map toLower s == "what?"=
-        Just (stringToMatrix "This is Haskell LED, and the animation on this 8x32 Matrix LED is driven by program written in Haskell…")
+        Just (stringToMatrix "This is Haskell LED.  The animation on this 8x32 Matrix LED is driven by a program written in Haskell…")
     | map toLower s == "who are we?" || map toLower s == "who?"=
         Just (stringToMatrix "We are Hong Quach and Norah Alballa!…")
-    | map toLower s == "what time it is?" || map toLower s == "time?" =
-        Just (stringToMatrix "8:30a")
     | map toLower s == "haskell logo" =
         Just (stringToMatrix "»")
     | otherwise = Nothing

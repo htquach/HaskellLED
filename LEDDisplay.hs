@@ -21,21 +21,21 @@ another source, such as an email notification or system status.
 module LEDDisplay where
 
 import Control.Monad        (forever)
-import Control.Monad
+import Control.Monad        (when, mzero)
 import Control.Monad.Trans  (lift, liftIO)
-import Control.Monad.Trans.Cont
-import Control.Monad.Trans.Maybe
-import Control.Applicative
+import Control.Monad.Trans.Maybe (runMaybeT)
 import Control.Concurrent   (threadDelay)
 import System.IO            (FilePath)
-import System.Hardware.Serialport
-import qualified Data.ByteString.Char8 as B
 import Numeric              (readHex, showHex, showIntAtBase)
 import Data.Char            (intToDigit)
 import Data.List            (intercalate)
-import Data.Time            (getZonedTime)
 import System.Locale        (defaultTimeLocale)
 import Data.Time.Format     (formatTime)
+import System.Time          (getClockTime, toCalendarTime, formatCalendarTime)
+
+-- Serial Port communication with the Arduino board
+import System.Hardware.Serialport
+import qualified Data.ByteString.Char8 as B
 
 import CharsLookup
 
@@ -64,22 +64,49 @@ renderMatrixToTerminal led matrix = do
         m = padFrameCenter (width led) matrix
 
 
--- | Prompt for string and render it
+-- | Prompt for string and render it to the Arduino Board
 promptForever :: LEDDisplaySettings -> SerialPort -> IO (Maybe Int)
 promptForever led hw = do
-    liftIO $ putStrLn "Initialize"
-    threadDelay 1000000
     liftIO $ putStrLn "StartUp Logo"
     renderMatrix led hw $ padMatrix led (stringToMatrix "Haskell Logo")
-    threadDelay 1000000
     liftIO $ putStr "Ready"
     runMaybeT $ forever $ do
         liftIO $ putStr "Text to display: "
         msg <- liftIO getLine
         when (msg == "exit") $ do
-            lift $ renderMatrix (led { scrDelayMicroSec = 50000}) hw (stringToMatrix "Bye! »")
+            lift $ renderMatrix led hw (stringToMatrix "Bye! »")
             exit
         lift $ renderMatrix led hw $ padMatrix led (stringToMatrix msg)
+
+-- | Display the ticking clock updated every second
+clockForever :: LEDDisplaySettings -> SerialPort -> IO (Maybe Int)
+clockForever led hw = do
+    renderMatrix led hw $ padMatrix led (stringToMatrix "Ctrl+C to stop")
+    liftIO $ putStr "Ready"
+    forever $ do
+        x <- getClockTime
+        y <- toCalendarTime x
+        liftIO $ renderMatrix led hw $ (concatMatrixWithSeparator (stringToMatrix ("   " ++ (formatCalendarTime defaultTimeLocale "%H:%M:%S" y))) (emptyFrame led))
+
+
+-- | Prompt for string and render it onto the Terminal
+promptForeverTerminal :: LEDDisplaySettings -> IO (Maybe Int)
+promptForeverTerminal sim  = runMaybeT $ forever $ do
+    liftIO $ putStr "Text to display: "
+    str <- liftIO getLine  -- TODO:  implement backspace
+    when (str == "exit") $ do
+        liftIO $ renderMatrixToTerminal (sim { scrDelayMicroSec = 50000}) (stringToMatrix "Bye »")
+        exit
+    lift $  renderMatrixToTerminal sim  $ padMatrix sim (stringToMatrix str)
+
+-- | Display the ticking clock updated every second
+clockForeverTerminal :: LEDDisplaySettings -> IO (Maybe Int)
+clockForeverTerminal sim = forever $ do
+    liftIO $ putStr "Showing System Clock.  Use Ctrl+C to exit: "
+    x <- getClockTime
+    y <- toCalendarTime x
+    liftIO $  renderMatrixToTerminal sim (padFrameCenter (width sim) (stringToMatrix (formatCalendarTime defaultTimeLocale "%H:%M:%S" y)))
+    threadDelay 1000000
 
 
 -- | Render the matrix on the Matrix LED
@@ -129,6 +156,7 @@ hexFrameToTerminal onC offC w h gs =
 -- | A horizontal border to wrap arround the frame
 borderHorizontal :: Int -> String
 borderHorizontal w = (take (w * 2) (repeat '='))
+
 
 -- | A blank space between each char including the last one.
 insertSpace :: String -> String
@@ -222,7 +250,7 @@ data LEDDisplaySettings
 
     deriving (Eq, Show)
 
--- | The default settings for a Matrix LED
+-- | The default settings for an 8x32 Matrix LED
 defaultLedMatrix
     = LEDMatrix {
         name = "32*8 LEDDisplaySettings with medium scroll speed"
@@ -234,6 +262,7 @@ defaultLedMatrix
         , fStartChar = '^'
         , fEndChar = '$'}
 
+-- | The default setting for a Terminal display 8x32
 defaultSimulator
     = LEDMatrixSim {
         name = "32*8 Simulator with medium scroll speed"
@@ -243,6 +272,7 @@ defaultSimulator
         , onChar = '#'
         , offChar = ' '}
 
+-- | This is for a fast scrolling 8x32 matrix LED
 fastLedMatrix
     = LEDMatrix {
         name = "32*8 LEDDisplaySettings with fast scroll speed"
@@ -254,6 +284,7 @@ fastLedMatrix
         , fStartChar = '^'
         , fEndChar = '$'}
 
+-- | This is for a fast scrolling 8x32 terminal simulator
 fastSimulator
     = LEDMatrixSim {
         name = "32*8 Simulator with fast scroll speed"
@@ -263,6 +294,7 @@ fastSimulator
         , onChar = '@'
         , offChar = ' '}
 
+-- | This is for a slow scrolling 8x32 matrix LED
 slowLedMatrix
     = LEDMatrix {
         name = "32*8 LEDDisplaySettings with slow scroll speed"
@@ -274,6 +306,7 @@ slowLedMatrix
         , fStartChar = '^'
         , fEndChar = '$'}
 
+-- | This is for a slow scrolling 8x32 terminal simulator
 slowSimulator
     = LEDMatrixSim {
         name = "32*8 Simulator with slow scroll speed"
@@ -283,6 +316,7 @@ slowSimulator
         , onChar = '@'
         , offChar = ' '}
 
+-- | This is for a wide 8x40 matrix LED
 wideLedMatrix
     = LEDMatrix {
         name = "40*8 LEDDisplaySettings"
@@ -294,6 +328,7 @@ wideLedMatrix
         , fStartChar = '^'
         , fEndChar = '$'}
 
+-- | This is for a wide 8x40 terminal simulator
 wideSimulator
     = LEDMatrixSim {
         name = "32*8 Simulator with medium scroll speed"
@@ -314,33 +349,24 @@ class LEDDisplay a where
     promptAndDisplay :: a ->  IO (Maybe Int)
     -- | Display a ticking clock
     clock :: a -> IO (Maybe Int)
-
-
+           
+           
 -- | An instance of the LED Display simulator to render to terminal
 instance LEDDisplay LEDDisplaySettings where
     promptAndDisplay sim@(LEDMatrixSim {})
-        = runMaybeT $ forever $ do
-            liftIO $ putStr "Text to display: "
-            str <- liftIO getLine  -- TODO:  implement backspace
-            when (str == "exit") $ do
-                liftIO $ renderMatrixToTerminal (sim { scrDelayMicroSec = 50000}) (stringToMatrix "Bye »")
-                exit
-            lift $  renderMatrixToTerminal sim  $ padMatrix sim (stringToMatrix str)
+        = promptForeverTerminal sim
     promptAndDisplay hwmatrix@(LEDMatrix {})
         = do withSerial (serPortPath hwmatrix)
                         defaultSerialSettings { commSpeed = (serSpeed hwmatrix) }
                         (promptForever hwmatrix)
     clock sim@(LEDMatrixSim {})
-        = runMaybeT $ forever $ do
-            liftIO $ putStr "Showing System Clock.  Use Ctrl+C to cancel: "
-            str <- lift $ fmap show getZonedTime  -- TODO:  display just the %H:%M
-            when (str == "exit") $ do
-                lift $ renderMatrixToTerminal (sim { scrDelayMicroSec = 50000}) (stringToMatrix "Bye »")
-                exit
-            liftIO $  renderMatrixToTerminal sim (padFrameCenter (width sim) (stringToMatrix str))
+        = clockForeverTerminal sim
     clock hwmatrix@(LEDMatrix {})
-        = undefined
-
+        = do withSerial (serPortPath hwmatrix)
+                        defaultSerialSettings { commSpeed = (serSpeed hwmatrix) }
+                        (clockForever hwmatrix)
+   
+   
 -- | The main program to run with the Arduino hardware
 runArduino = promptAndDisplay defaultLedMatrix
 
@@ -348,5 +374,6 @@ runArduino = promptAndDisplay defaultLedMatrix
 -- | The main program to run the display on the terminal
 runTerminal = promptAndDisplay defaultSimulator
 
+
 -- | Display the current time on the terminal
-runTerminalClock = clock defaultSimulator
+runTerminalClock = clock wideSimulator
