@@ -54,13 +54,14 @@ arduinoPath = "COM13"
 
 -- | Render the matrix to terminal instead of onto the actual HW
 renderMatrixToTerminal :: LEDDisplaySettings  -> [[Bool]] -> IO ()
-renderMatrixToTerminal led m = do
+renderMatrixToTerminal led matrix = do
     mapM_ (scrollFrameTerminal m) [0..(((length (m !! 0)) - (width led)) `div` (scrColumnsCount led))]
     threadDelay 1
     where
         scrollFrameTerminal m n = do
             renderFrameOntoTerminal led (matrixToHexFrame (width led) ((scrollLeftFrames led m) !! n))
             threadDelay (scrDelayMicroSec led)
+        m = padFrameCenter (width led) matrix
 
 
 -- | Prompt for string and render it
@@ -199,19 +200,19 @@ padFrameCenter w bss = padFrameLeft w (padFrameRight ((length (bss!!0))+((w - (l
 data LEDDisplaySettings
     -- | A constructor for a two dimensions LED display (matrix)
     = LEDMatrix {
-        n :: String
+        name :: String
         , width :: Int
         , height :: Int
-        , serSpeed :: CommSpeed
-        , serPortPath :: FilePath
         , scrDelayMicroSec :: Int
         , scrColumnsCount :: Int
+        , serSpeed :: CommSpeed
+        , serPortPath :: FilePath
         , fStartChar :: Char
         , fEndChar :: Char
         }
     -- | A constructor for simulating a two dimensions display
     | LEDMatrixSim {
-        n :: String
+        name :: String
         , width :: Int
         , height :: Int
         , scrDelayMicroSec :: Int
@@ -224,18 +225,18 @@ data LEDDisplaySettings
 -- | The default settings for a Matrix LED
 defaultLedMatrix
     = LEDMatrix {
-        n = "32*8 LEDDisplaySettings with medium scroll speed"
+        name = "32*8 LEDDisplaySettings with medium scroll speed"
         , width = 32, height = 8
-        , serSpeed = CS9600
-        , serPortPath = arduinoPath
         , scrDelayMicroSec =  1000
         , scrColumnsCount = 1
+        , serSpeed = CS9600
+        , serPortPath = arduinoPath
         , fStartChar = '^'
         , fEndChar = '$'}
 
 defaultSimulator
     = LEDMatrixSim {
-        n = "32*8 Simulator with medium scroll speed"
+        name = "32*8 Simulator with medium scroll speed"
         , width = 32, height = 8
         , scrDelayMicroSec = 50000
         , scrColumnsCount = 1
@@ -244,7 +245,7 @@ defaultSimulator
 
 fastLedMatrix
     = LEDMatrix {
-        n = "32*8 LEDDisplaySettings with fast scroll speed"
+        name = "32*8 LEDDisplaySettings with fast scroll speed"
         , width = 32, height = 8
         , serSpeed = CS9600
         , serPortPath = arduinoPath
@@ -255,7 +256,7 @@ fastLedMatrix
 
 fastSimulator
     = LEDMatrixSim {
-        n = "32*8 Simulator with fast scroll speed"
+        name = "32*8 Simulator with fast scroll speed"
         , width = 32, height = 8
         , scrDelayMicroSec = 10000
         , scrColumnsCount = 5
@@ -264,7 +265,7 @@ fastSimulator
 
 slowLedMatrix
     = LEDMatrix {
-        n = "32*8 LEDDisplaySettings with slow scroll speed"
+        name = "32*8 LEDDisplaySettings with slow scroll speed"
         , width = 32, height = 8
         , serSpeed = CS9600
         , serPortPath = arduinoPath
@@ -275,7 +276,7 @@ slowLedMatrix
 
 slowSimulator
     = LEDMatrixSim {
-        n = "32*8 Simulator with slow scroll speed"
+        name = "32*8 Simulator with slow scroll speed"
         , width = 32, height = 8
         , scrDelayMicroSec = 100000
         , scrColumnsCount = 1
@@ -284,7 +285,7 @@ slowSimulator
 
 wideLedMatrix
     = LEDMatrix {
-        n = "40*8 LEDDisplaySettings"
+        name = "40*8 LEDDisplaySettings"
         , width = 40, height = 8
         , serSpeed = CS9600
         , serPortPath = arduinoPath
@@ -295,7 +296,7 @@ wideLedMatrix
 
 wideSimulator
     = LEDMatrixSim {
-        n = "32*8 Simulator with medium scroll speed"
+        name = "32*8 Simulator with medium scroll speed"
         , width = 40, height = 8
         , scrDelayMicroSec = 50000
         , scrColumnsCount = 1
@@ -322,7 +323,7 @@ instance LEDDisplay LEDDisplaySettings where
             liftIO $ putStr "Text to display: "
             str <- liftIO getLine  -- TODO:  implement backspace
             when (str == "exit") $ do
-                liftIO $ renderMatrixToTerminal (sim { scrDelayMicroSec = 50000}) (stringToMatrix "Bye! »")
+                liftIO $ renderMatrixToTerminal (sim { scrDelayMicroSec = 50000}) (stringToMatrix "Bye »")
                 exit
             lift $  renderMatrixToTerminal sim  $ padMatrix sim (stringToMatrix str)
     promptAndDisplay hwmatrix@(LEDMatrix {})
@@ -334,18 +335,18 @@ instance LEDDisplay LEDDisplaySettings where
             liftIO $ putStr "Showing System Clock.  Use Ctrl+C to cancel: "
             str <- lift $ fmap show getZonedTime  -- TODO:  display just the %H:%M
             when (str == "exit") $ do
-                lift $ renderMatrixToTerminal (sim { scrDelayMicroSec = 50000}) (stringToMatrix "Bye! »")
+                lift $ renderMatrixToTerminal (sim { scrDelayMicroSec = 50000}) (stringToMatrix "Bye »")
                 exit
             liftIO $  renderMatrixToTerminal sim (padFrameCenter (width sim) (stringToMatrix str))
     clock hwmatrix@(LEDMatrix {})
         = undefined
 
 -- | The main program to run with the Arduino hardware
-mainArduino = promptAndDisplay defaultLedMatrix
+runArduino = promptAndDisplay defaultLedMatrix
 
 
 -- | The main program to run the display on the terminal
-mainTerminal = promptAndDisplay defaultSimulator
+runTerminal = promptAndDisplay defaultSimulator
 
 -- | Display the current time on the terminal
-clockTerm = clock defaultSimulator
+runTerminalClock = clock defaultSimulator
