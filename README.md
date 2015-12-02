@@ -6,6 +6,8 @@ in this distribution for license terms.
 # HaskellLED
 Using Haskell to compute the animation to be rendered on the LED display using an Arduino and bit-shifts registers.  The LED display can be a matrix of LEDs, or a cube of LEDs, or any structure.
 
+[Project Page & Documents] (http://htquach.github.io/HaskellLED/)
+
 ## LEDs Driver
 
 This project is to drive a LED display using an Arduino UNO board and a set of bit-shift registers (e.g. 74HC595). The board is connected to a computer through the USB serial port and each of the frame to be display on the LED display is done so with the Haskell program. The role of the Arduino board is to receive a Hex encoded string where each bit represent an LED. For an 8x8 matrix LED, we would have 64 LED to render each frame. The data would be a Hex string of 64 bits or 16 Hex digits. The main driver is on the computer side written in Haskell to send to the board a new frame to be rendered.
