@@ -31,8 +31,14 @@
 <li>Build the LED Display</li>
 <li>Upload the Arduino Sketch onto the Arduino board</li>
 <li>Connect the board to the computer</li>
-<li>Run <code>main</code> in the LEDDisplay module</li>
+<li>Run <code>promptAndDisplay defaultLedMatrix</code> in the LEDDisplay module</li>
 </ol>
+
+<p>or</p>
+
+<ul>
+<li>Run <code>runTerminal</code> to simulate it on the terminal.</li>
+</ul>
 
 <h3>
 <a id="haskell-to-arduino-protocol" class="anchor" href="#haskell-to-arduino-protocol" aria-hidden="true"><span class="octicon octicon-link"></span></a>Haskell to Arduino Protocol</h3>
@@ -41,6 +47,19 @@
 
 <p>The Arduino board is set to listen on its serial port for new frame data to be render.  The frame data format is a Hex encoded string of the 1s and 0s bits that map to the ON or OFF state of each of the LED.  The length and order of the bits depend on the number and order of wiring of the bit-shift registers.</p>
 
+<h3>
+<a id="module-doc" class="anchor" href="#module-doc" aria-hidden="true"><span class="octicon octicon-link"></span></a>Module Docs</h3>
+
+
+<ul>
+<li><a href="http://htquach.github.io/HaskellLED/doc/LEDDisplay.html">LEDDisplay.hs</a></li>
+<li><a href="http://htquach.github.io/HaskellLED/doc/CharsLookup.html">CharsLookup.hs</a></li>
+</ul>
+
+<h3>
+<a id="wiring-an-8x32-matrix-led" class="anchor" href="#wiring-an-8x32-matrix-led" aria-hidden="true"><span class="octicon octicon-link"></span></a>Wiring an 8x32 Matrix LED</h3>
+
+<p><img src="ArduinoSketch_MatrixLED/LEDMatrixCircuit_bb.png" alt="Bread Board Circuit" width="800"></p>
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/htquach/HaskellLED">Haskell LED</a> is maintained by <a href="https://github.com/htquach">htquach</a>.</span>
 
