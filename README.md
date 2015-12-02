@@ -6,7 +6,11 @@ in this distribution for license terms.
 # HaskellLED
 Using Haskell to compute the animation to be rendered on the LED display using an Arduino and bit-shifts registers.  The LED display can be a matrix of LEDs, or a cube of LEDs, or any structure.
 
-[Project Page & Documents] (http://htquach.github.io/HaskellLED/)
+* [Project Page] (http://htquach.github.io/HaskellLED/)
+
+* [LEDDisplay Module](http://htquach.github.io/HaskellLED/doc/LEDDisplay.html)
+
+* [CharsLookup Module](http://htquach.github.io/HaskellLED/doc/CharsLookup.html)
 
 ## LEDs Driver
 
