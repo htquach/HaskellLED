@@ -1,0 +1,1 @@
+haddock -o doc -h --source-base=https://github.com/htquach/HaskellLED --source-module=https://github.com/htquach/HaskellLED/blob/master/%%{MODULE}.hs LEDDisplay.hs CharsLookup.hs
