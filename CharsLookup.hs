@@ -98,9 +98,9 @@ specialStrings s
 -- | The char lookup table
 rawCharToStrings :: Char -> [String]
 rawCharToStrings c
-    -- | Just a space
+    -- Just a space
     | c == ' '  = ["0" | x <- [0..7]]
-    -- | Key available on US standard keyboards
+    -- Key available on US standard keyboards
     | c == '!'  = ["00000",
                    "00100",
                    "00100",
@@ -946,7 +946,7 @@ rawCharToStrings c
                    "00000",
                    "00000",
                    "00000"]
-    -- | The function f ASCII #159
+    -- The function f ASCII #159
     | c == 'ƒ'  = ["00010",
                    "00100",
                    "00100",
@@ -955,7 +955,7 @@ rawCharToStrings c
                    "00100",
                    "01000",
                    "00000"]
-    -- | Horizontal Ellipsis #Alt+0133  U+2026
+    -- Horizontal Ellipsis #Alt+0133  U+2026
     | c == '…'  = ["00000",
                    "00000",
                    "00000",
@@ -965,7 +965,7 @@ rawCharToStrings c
                    "10101",
                    "00000"]
 
-    -- | A subsitute for the Haskell Logo >\=, ASCII #175
+    -- A subsitute for the Haskell Logo >\=, ASCII #175
     | c == '»'  = ["00000000000",
                    "00000000000",
                    "10010000000",
