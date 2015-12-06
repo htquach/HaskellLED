@@ -59,7 +59,7 @@ renderMatrixToTerminal led matrix = do
     threadDelay 1
     where
         scrollFrameTerminal m n = do
-            renderFrameOntoTerminal led (matrixToHexFrame (width led) ((scrollLeftFrames led m) !! n))
+            renderFrameOntoTerminal led (matrixToHexFrame (width led) ((scrollLeftFrames (width led) (scrColumnsCount led) m) !! n))
             threadDelay (scrDelayMicroSec led)
         m = padFrameCenter (width led) matrix
 
@@ -116,13 +116,13 @@ renderMatrix led hw matrix = do
     threadDelay 1
     where
         scrollFrame s m n= do
-            renderFrameOntoHW led s (matrixToHexFrame (width led) ((scrollLeftFrames led m) !! n))
+            renderFrameOntoHW led s (matrixToHexFrame (width led) ((scrollLeftFrames (width led) (scrColumnsCount led) m) !! n))
             threadDelay (scrDelayMicroSec led)
 
 
 -- | Each matrix has many frames to animate scrolling from right to left
-scrollLeftFrames :: LEDDisplaySettings -> [[Bool]] -> [[[Bool]]]
-scrollLeftFrames led bss = [[drop ((scrColumnsCount led) * x) bs | bs <- bss] | x <- [0..((length (bss !! 0)) - (width led))]]
+scrollLeftFrames :: Int -> Int -> [[Bool]] -> [[[Bool]]]
+scrollLeftFrames w step bss = [[take w (drop (step * x) bs) | bs <- bss] | x <- [0..((length (bss !! 0)) - w)]]
 
 
 -- | The dataToRender is a string of hex encoded bits to send for render.

@@ -2,6 +2,8 @@
 import Test.HUnit
 import LEDDisplay
 import CharsLookup
+
+
 -- TODO: Move all tests code to another file Test_LEDDisplay.hs
 -- | Test code
 testPadLeft1 = TestCase (assertEqual "Test padLeft1" (padLeft 'a' 5 "") "aaaaa")
@@ -16,28 +18,51 @@ frameContent =  [(take 4 (repeat False)) | x <- [1..3]]
 padColumns :: Int -> [[Bool]]
 padColumns n = [(take n (repeat True)) | x <- [1..3]]
 
--- | Test cases
 padFrameLeft7Expect :: [[Bool]]
 padFrameLeft7Expect = concatMatrixWithSeparator (padColumns 2) frameContent
 
+testPadFrameLeft7 :: Test
 testPadFrameLeft7 = TestCase (assertEqual "Test padFrameLeft7" padFrameLeft7Expect (padFrameLeft 7 frameContent))
 
 padFrameRight7Expect :: [[Bool]]
 padFrameRight7Expect = concatMatrixWithSeparator frameContent (padColumns 2)
 testPadFrameRight7 = TestCase (assertEqual "Test padFrameRight7" padFrameRight7Expect (padFrameRight 7 frameContent))
 
-
+padFrameCenter8Expect :: [[Bool]]
 padFrameCenter8Expect = concatMatrixWithSeparator (padColumns 1) (concatMatrixWithSeparator frameContent (padColumns 1))
+testPadFrameCenter8 :: Test
 testPadFrameCenter8 = TestCase (assertEqual "Test padFrameCenter8" padFrameCenter8Expect (padFrameCenter 8 frameContent))
 
+padFrameCenter32Expect :: [[Bool]]
 padFrameCenter32Expect = concatMatrixWithSeparator (padColumns 13) (concatMatrixWithSeparator frameContent (padColumns 13))
+testPadFrameCenter32 :: Test
 testPadFrameCenter32 = TestCase (assertEqual "Test padFrameCenter32" padFrameCenter32Expect (padFrameCenter 32 frameContent))
 
-runAllTests = do
-    runTestTT testPadLeft1
-    runTestTT testPadLeft2
-    runTestTT testPadLeft3
-    runTestTT testPadFrameLeft7
-    runTestTT testPadFrameRight7
-    runTestTT testPadFrameCenter8
-    runTestTT testPadFrameCenter32
+scrollLeftFramesExpect :: [[[Bool]]]
+scrollLeftFramesExpect = [[[True,  True,  False] | r <- [0..2]]
+                         ,[[True,  False, False] | r <- [0..2]]
+                         ,[[False, False, True ] | r <- [0..2]]
+                         ,[[False, True,  True ] | r <- [0..2]]]
+scrollLeftFramesInput :: [[Bool]]
+scrollLeftFramesInput = [[True, True, False, False, True, True] | r <- [0..2]]
+testScrollLeftFrames :: Test
+testScrollLeftFrames = TestCase (assertEqual "Test testScrollLeftFrames" scrollLeftFramesExpect (scrollLeftFrames 2 1 scrollLeftFramesInput))
+
+
+ledDisplayTestCases :: [Test]
+ledDisplayTestCases = [
+    testPadLeft1
+    ,testPadLeft2
+    ,testPadLeft3
+    ,testPadFrameLeft7
+    ,testPadFrameRight7
+    ,testPadFrameCenter8
+    ,testPadFrameCenter32
+    ,testScrollLeftFrames
+    ]
+
+tests :: Test
+tests = test [TestLabel (show x) x | x <- ledDisplayTestCases]
+
+rt = do
+    runTestTT tests
