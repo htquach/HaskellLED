@@ -46,8 +46,26 @@ scrollLeftFramesExpect = [[[True,  True,  False] | r <- [0..2]]
 scrollLeftFramesInput :: [[Bool]]
 scrollLeftFramesInput = [[True, True, False, False, True, True] | r <- [0..2]]
 testScrollLeftFrames :: Test
-testScrollLeftFrames = TestCase (assertEqual "Test testScrollLeftFrames" scrollLeftFramesExpect (scrollLeftFrames 2 1 scrollLeftFramesInput))
+testScrollLeftFrames = TestCase (assertEqual "Test testScrollLeftFrames" scrollLeftFramesExpect (scrollLeftFrames 3 1 scrollLeftFramesInput))
 
+hexFrameToTerminalExpect :: String
+hexFrameToTerminalExpect = take 9 (repeat '\n')
+    ++ "ffffffbfffef1e38c7bdd7efbc18efb5ff6dce30f3ffffff\n"
+    ++ "================================================\n"
+    ++ ". . . . . . . . . . . . . . . . . . . . . . . . \n"
+    ++ ". # . . . . . . . . . . . . . . . . . # . . . . \n"
+    ++ "# # # . . . . # # # . . . # # # . . # # # . . . \n"
+    ++ ". # . . . . # . . . # . # . . . . . . # . . . . \n"
+    ++ ". # . . . . # # # # # . . # # # . . . # . . . . \n"
+    ++ ". # . . # . # . . . . . . . . . # . . # . . # . \n"
+    ++ ". . # # . . . # # # . . # # # # . . . . # # . . \n"
+    ++ ". . . . . . . . . . . . . . . . . . . . . . . . \n"
+    ++ "================================================"
+
+hexFrameToTerminalInput :: String
+hexFrameToTerminalInput = "ffffffbfffef1e38c7bdd7efbc18efb5ff6dce30f3ffffff"
+testHexFrameToTerminal :: Test
+testHexFrameToTerminal = TestCase (assertEqual "Test hexFrameToTerminal" hexFrameToTerminalExpect (hexFrameToTerminal '#' '.' 24 8 hexFrameToTerminalInput))
 
 ledDisplayTestCases :: [Test]
 ledDisplayTestCases = [
@@ -59,6 +77,7 @@ ledDisplayTestCases = [
     ,testPadFrameCenter8
     ,testPadFrameCenter32
     ,testScrollLeftFrames
+    ,testHexFrameToTerminal
     ]
 
 tests :: Test

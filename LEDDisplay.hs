@@ -140,7 +140,10 @@ renderFrameOntoTerminal led dataToRender = do
     putStrLn (hexFrameToTerminal (onChar led) (offChar led) (width led) (height led) dataToRender)
 
 
--- | Convert a frame in hex format to matrix string
+{-|
+  Convert a frame in hex format to matrix string.
+  The width must be divisible by 4 because of 4 bits per hex digit
+-}
 hexFrameToTerminal :: Char -> Char -> Int -> Int -> String -> String
 hexFrameToTerminal onC offC w h gs =
     take 8 (repeat '\n') -- Some blank lines to separate each frame in the output
