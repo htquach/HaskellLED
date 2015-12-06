@@ -68,7 +68,7 @@ renderMatrixToTerminal led matrix = do
 promptForever :: LEDDisplaySettings -> SerialPort -> IO (Maybe Int)
 promptForever led hw = do
     liftIO $ putStrLn "StartUp Logo"
-    renderMatrix led hw $ padMatrix led (stringToMatrix "Haskell Logo")
+    renderMatrix led hw $ padMatrix (width led) (height led) (stringToMatrix "Haskell Logo")
     liftIO $ putStr "Ready"
     runMaybeT $ forever $ do
         liftIO $ putStr "Text to display: "
@@ -76,17 +76,17 @@ promptForever led hw = do
         when (msg == "exit") $ do
             lift $ renderMatrix led hw (stringToMatrix "Bye! »")
             exit
-        lift $ renderMatrix led hw $ padMatrix led (stringToMatrix msg)
+        lift $ renderMatrix led hw $ padMatrix (width led) (height led) (stringToMatrix msg)
 
 -- | Display the ticking clock updated every second
 clockForever :: LEDDisplaySettings -> SerialPort -> IO (Maybe Int)
 clockForever led hw = do
-    renderMatrix led hw $ padMatrix led (stringToMatrix "Ctrl+C to stop")
+    renderMatrix led hw $ padMatrix (width led) (height led) (stringToMatrix "Ctrl+C to stop")
     liftIO $ putStr "Ready"
     forever $ do
         x <- getClockTime
         y <- toCalendarTime x
-        liftIO $ renderMatrix led hw $ (concatMatrixWithSeparator (stringToMatrix ("   " ++ (formatCalendarTime defaultTimeLocale "%H:%M:%S" y))) (emptyFrame led))
+        liftIO $ renderMatrix led hw $ (concatMatrixWithSeparator (stringToMatrix ("   " ++ (formatCalendarTime defaultTimeLocale "%H:%M:%S" y))) (emptyFrame (width led) (height led)))
 
 
 -- | Prompt for string and render it onto the Terminal
@@ -97,7 +97,7 @@ promptForeverTerminal sim  = runMaybeT $ forever $ do
     when (str == "exit") $ do
         liftIO $ renderMatrixToTerminal (sim { scrDelayMicroSec = 50000}) (stringToMatrix "Bye »")
         exit
-    lift $  renderMatrixToTerminal sim  $ padMatrix sim (stringToMatrix str)
+    lift $  renderMatrixToTerminal sim  $ padMatrix (width sim) (height sim) (stringToMatrix str)
 
 -- | Display the ticking clock updated every second
 clockForeverTerminal :: LEDDisplaySettings -> IO (Maybe Int)
@@ -176,7 +176,8 @@ hexToBin onC offC s = replaceChar onC offC (showIntAtBase 2 intToDigit (fst((rea
     replaceChar m n ('0':xs) = m:(replaceChar m n xs)
 
 
-{-| Pad the left side of the string with the specified Char until it satistfies
+{-|
+  Pad the left side of the string with the specified Char until it satistfies
   the specified length
 -}
 padLeft :: Char -> Int -> String -> String
@@ -189,7 +190,7 @@ matrixToHexFrame :: Int -> [[Bool]] -> String
 matrixToHexFrame w matrix = concat [toHexString (take w row) | row <- matrix]
 
 
--- | Convert a String of Bools into a String of Hex  11110000 -> 0xF0
+-- | Convert a String of Bools into a String of Hex  11110001 -> 0xf1
 toHexString :: [Bool] -> String
 toHexString [] = ""
 toHexString bs = showHex (fromBoolToInt(take 4 bs)) (toHexString (drop 4 bs)) where
@@ -201,13 +202,13 @@ toHexString bs = showHex (fromBoolToInt(take 4 bs)) (toHexString (drop 4 bs)) wh
 
 
 -- | An empty Frame to show all blank
-emptyFrame :: LEDDisplaySettings -> [[Bool]]
-emptyFrame led = [[lightOff | c <- [1..(width led)]] | r <- [1..(height led)]]
+emptyFrame :: Int -> Int -> [[Bool]]
+emptyFrame w h = [[lightOff | c <- [1..w]] | r <- [1..h]]
 
 
 -- | Pad the matrix with empty frame at the beginning and at the end of the matrix
-padMatrix :: LEDDisplaySettings -> [[Bool]] -> [[Bool]]
-padMatrix led m = concatMatrixWithSeparator (concatMatrixWithSeparator (emptyFrame led) m) (emptyFrame led)
+padMatrix :: Int -> Int -> [[Bool]] -> [[Bool]]
+padMatrix w h m = concatMatrixWithSeparator (concatMatrixWithSeparator (emptyFrame w h) m) (emptyFrame w h)
 
 
 -- | Pad the left side of the frame with blank columns to fill the frame
