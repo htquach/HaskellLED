@@ -1,7 +1,8 @@
-
+import Test.QuickCheck
 import Test.HUnit
 import LEDDisplay
 import CharsLookup
+
 
 
 -- TODO: Move all tests code to another file Test_LEDDisplay.hs
@@ -93,21 +94,21 @@ testMatrixToHexFrame :: Test
 testMatrixToHexFrame = TestCase (assertEqual "Test matrixToHexFrame" matrixToHexFrameExpect (matrixToHexFrame 24 matrixToHexFrameInput))
 
 toHexStringInput :: [Bool]
-toHexStringInput = 
-    [False,False,False,True, 
+toHexStringInput =
+    [False,False,False,True,
      False,False,True, False,
-     False,False,True, True, 
+     False,False,True, True,
      False,True, False,False,
-     False,True, False,True, 
+     False,True, False,True,
      False,True, True, False,
-     False,True, True, True, 
+     False,True, True, True,
      True, False,False,False,
-     True, False,False,True, 
+     True, False,False,True,
      False,False,False,False,
      True, False,True, False,
-     True, False,True, True, 
+     True, False,True, True,
      True, True, False,False,
-     True, True, False,True, 
+     True, True, False,True,
      True, True, True, False,
      True, True, True, True]
 testToHexString :: Test
@@ -150,12 +151,17 @@ concatMatrixWithSeparatorExpect = [[False, True, False] | r <- [1..2]]
 testConcatMatrixWithSeparator :: Test
 testConcatMatrixWithSeparator = TestCase (assertEqual "Test concatMatrixWithSeparator" concatMatrixWithSeparatorExpect (concatMatrixWithSeparator [[False] | r <- [1..2]] [[False] | r <- [1..2]]))
 
+
 trimZerosExpect :: [String]
 trimZerosExpect = ["101" | r <- [1..2]]
 trimZerosInput :: [String]
 trimZerosInput = ["0000101000000" | r <- [1..2]]
 testTrimZeros :: Test
 testTrimZeros = TestCase (assertEqual "Test trimZeros" trimZerosExpect (trimZeros trimZerosInput))
+testTrimZeros2 = TestCase (assertEqual "Test trimZeros2 " ["1"] (trimZeros ["000001"]))
+testTrimZeros3 = TestCase (assertEqual "Test trimZeros3" ["1"] (trimZeros ["100000"]))
+testTrimZeros4 = TestCase (assertEqual "Test trimZeros4" [""] (trimZeros ["00000"]))
+
 
 toBoolGridExpect :: [[Bool]]
 toBoolGridExpect = [[True],[False],[True],[False],[False],[False],[False],[True]]
@@ -163,6 +169,7 @@ toBoolGridInput :: [String]
 toBoolGridInput = ["0", "1", "0", "1", "1", "1", "1", "0"]
 testToBoolGrid :: Test
 testToBoolGrid = TestCase (assertEqual "Test toBoolGrid" toBoolGridExpect (toBoolGrid toBoolGridInput))
+testToBoolGrid2 = TestCase (assertEqual "Test toBoolGrid2" [[False,True,False,True]] (toBoolGrid ["1010"]))
 
 toIntGridExpect :: [String]
 toIntGridExpect = ["0", "1", "0", "1", "1", "1", "1", "0"]
@@ -170,9 +177,10 @@ toIntGridInput :: [[Bool]]
 toIntGridInput = [[True],[False],[True],[False],[False],[False],[False],[True]]
 testToIntGrid :: Test
 testToIntGrid = TestCase (assertEqual "Test toIntGrid" toIntGridExpect (toIntGrid toIntGridInput))
+testToIntGrid2 = TestCase (assertEqual "Test toIntGrid2" ["000","111"] (toIntGrid [[True,True,True],[False,False,False]]))
 
 letterToMatrixExpect :: [[Bool]]
-letterToMatrixExpect = 
+letterToMatrixExpect =
     [[True,False,False,False,True],
      [False,True,True,True,False],
      [False,True,True,True,True],
@@ -181,8 +189,19 @@ letterToMatrixExpect =
      [False,True,True,True,False],
      [True,False,False,False,False],
      [True,True,True,True,True]]
+letterToMatrixExpect2 =
+    [[False,False,False],
+     [True,False,True],
+     [True,False,True],
+     [True,False,True],
+     [True,False,True],
+     [True,False,True],
+     [False,False,False],
+     [True,True,True]]
 testLetterToMatrix :: Test
 testLetterToMatrix = TestCase (assertEqual "Test letterToMatrix" letterToMatrixExpect (letterToMatrix 'G'))
+testLetterToMatrix2 = TestCase (assertEqual "Test2 letterToMatrix" letterToMatrixExpect2 (letterToMatrix 'I'))
+
 
 rawCharToStringsExpect :: [String]
 rawCharToStringsExpect = ["01110",
@@ -193,8 +212,18 @@ rawCharToStringsExpect = ["01110",
                           "10001",
                           "01111",
                           "00000"]
+
+rawCharToStringsExpect2  = ["01110",
+                            "00100",
+                            "00100",
+                            "00100",
+                            "00100",
+                            "00100",
+                            "01110",
+                            "00000"]
 testRawCharToStrings :: Test
 testRawCharToStrings = TestCase (assertEqual "Test rawCharToStrings" rawCharToStringsExpect (rawCharToStrings 'G'))
+testRawCharToStrings2 = TestCase (assertEqual "Test rawCharToStrings" rawCharToStringsExpect2 (rawCharToStrings 'I'))
 
 rawLogoToStringsExpect :: [String]
 rawLogoToStringsExpect = ["00000000000",
@@ -229,16 +258,28 @@ ledDisplayTestCases = [
     ,testPadMatrix
     ,testStringToMatrix
     ,testTrimZeros
+    ,testTrimZeros2
+    ,testTrimZeros3
+    ,testTrimZeros4
     ,testConcatMatrixWithSeparator
     ,testToBoolGrid
+    ,testToBoolGrid2
     ,testToIntGrid
+    ,testToIntGrid2
     ,testLetterToMatrix
+    ,testLetterToMatrix2
     ,testRawCharToStrings
+    ,testRawCharToStrings2
     ,testRawLogoToStrings
     ]
 
 tests :: Test
 tests = test [TestLabel (show x) x | x <- ledDisplayTestCases]
 
+prop_charToStrings :: Char -> Bool
+prop_charToStrings x = (charToStrings x == (toIntGrid $ letterToMatrix x))
+runQuickCheck = do (quickCheck prop_charToStrings)
+
 rt = do
     runTestTT tests
+    quickCheck prop_charToStrings

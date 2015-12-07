@@ -47,22 +47,25 @@ concatMatrixWithSeparator (c:cs) (t:ts) = (c ++ lightOff:t) :  concatMatrixWithS
 
 -- | Trim the extra columns of zeros
 trimZeros :: [String] -> [String]
-trimZeros ss = trimRightZeros (trimLeftZeros ss ss) ss where
-    -- | Remove the left column of all zeros
-    trimLeftZeros :: [String] -> [String] -> [String]
-    trimLeftZeros lss trimedSS
-            | (countNonZero lss) == (countNonZero trimedSS) = trimLeftZeros (dropCol 'L' trimedSS) lss
-            | otherwise = trimedSS
-    -- | Remove the right column of all zeros
-    trimRightZeros :: [String] -> [String] -> [String]
-    trimRightZeros rss trimedSS
-            | (countNonZero rss) == (countNonZero trimedSS) = trimRightZeros (dropCol 'R' trimedSS) rss
-            | otherwise = trimedSS
-    -- | Drop the left column
-    dropCol :: Char -> [String] -> [String]
-    dropCol side xs | side == 'L' = [drop 1 x | x <- xs]
-                    | side == 'R' = [take ((length x) - 1) x | x <- xs]
-    countNonZero zss = sum [ if z /= '0' then 1 else 0| zs <- zss, z <- zs]
+trimZeros ss
+    -- | All zeros, just return empty
+    | countNonZero ss == 0 = ["" | x <- ss]
+    | otherwise = trimRightZeros (trimLeftZeros ss ss) ss where
+        -- | Remove the left column of all zeros
+        trimLeftZeros :: [String] -> [String] -> [String]
+        trimLeftZeros lss trimedSS
+                | (countNonZero lss) == (countNonZero trimedSS) = trimLeftZeros (dropCol 'L' trimedSS) lss
+                | otherwise = trimedSS
+        -- | Remove the right column of all zeros
+        trimRightZeros :: [String] -> [String] -> [String]
+        trimRightZeros rss trimedSS
+                | (countNonZero rss) == (countNonZero trimedSS) = trimRightZeros (dropCol 'R' trimedSS) rss
+                | otherwise = trimedSS
+        -- | Drop the left column
+        dropCol :: Char -> [String] -> [String]
+        dropCol side xs | side == 'L' = [drop 1 x | x <- xs]
+                        | side == 'R' = [take ((length x) - 1) x | x <- xs]
+        countNonZero zss = sum [ if z /= '0' then 1 else 0| zs <- zss, z <- zs]
 
 -- | Convert a nested list of Int of 0s and 1s into Bool where 0 to True and 1 to False.
 toBoolGrid :: [String] -> [[Bool]]
