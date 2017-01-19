@@ -120,7 +120,7 @@ void render(String frame, int holdCycle) {
       registers[0] = byte(layerBit);
       for (int r = 1; r < registerCount; r++)
       {
-        registers[r] = hexStringToByte(frame.substring(subFrameIndex + ((r - 1) * 2), subFrameIndex + (r * 2)));
+        registers[registerCount - r] = hexStringToByte(frame.substring(subFrameIndex + ((r - 1) * 2), subFrameIndex + (r * 2)));
       }
       shiftOutToRegisters(registerCount, registers);
 
